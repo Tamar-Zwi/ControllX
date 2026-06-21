@@ -1,7 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import AdminLayout from '../components/AdminLayout';
 import { UserPlus, UserMinus, Activity, X, Shield, Users, Lock, ChevronLeft, AlertTriangle, CheckCircle2 } from 'lucide-react';
-import { getAgentsByDept, createAgent, deleteAgent } from '../lib/api';
+import { useAuth } from '../hooks/useAuth'; 
+import { 
+  useGetAgentsByDeptQuery, 
+  useDeleteAgentMutation, 
+  useCreateAgentMutation 
+} from '../store/apiSlice';
 
 const SPECIALTY_MAP: Record<string, { value: string, label: string }[]> = {
   'CYBER': [
@@ -27,37 +32,28 @@ const SPECIALTY_MAP: Record<string, { value: string, label: string }[]> = {
 };
 
 const AdminAgents = () => {
-  const [agents, setAgents] = useState<any[]>([]);
-  const [showAllAgents, setShowAllAgents] = useState(false); //פתיחת רשימת הסוכנים
-  const [showModal, setShowModal] = useState(false);  //הוספת סוכן
-  const [loading, setLoading] = useState(true); //האם מחכים לשרת
-  const [agentToDelete, setAgentToDelete] = useState<{ id: number; codename: string } | null>(null); //מחיקת סוכן
+  const [showAllAgents, setShowAllAgents] = useState(false);
+  const [showModal, setShowModal] = useState(false);  
+  const [agentToDelete, setAgentToDelete] = useState<{ id: number; codename: string } | null>(null);
 
-  const manager = JSON.parse(localStorage.getItem('user') || '{}');
-  const managerDept = manager.department || 'OPERATIONS';
+  const { user: manager } = useAuth();
+  const managerDept = manager?.department || 'OPERATIONS'; 
 
-  useEffect(() => {
-    loadData();
-  }, [managerDept]);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const data = await getAgentsByDept(managerDept);
-      setAgents(data);
-    } catch (err) {
-      console.error("Communication breakdown with central server");
-      setAgents([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // --- RTK Query ---
+  const { data: agents = [], isLoading: loading } = useGetAgentsByDeptQuery(managerDept, {
+    skip: !managerDept
+  });
+  
+  const [deleteAgent] = useDeleteAgentMutation();
 
   const handleConfirmDelete = async () => {
     if (agentToDelete) {
-      await deleteAgent(agentToDelete.id);
-      await loadData();
-      setAgentToDelete(null);
+      try {
+        await deleteAgent(agentToDelete.id).unwrap(); // מוחק דרך רידקס
+        setAgentToDelete(null);
+      } catch (err) {
+        console.error("Failed to delete agent");
+      }
     }
   };
 
@@ -81,14 +77,13 @@ const AdminAgents = () => {
 
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%)] bg-[length:100%_4px] z-0 opacity-10" />
 
-        {/* --- הדר (Header) --- */}
         <div className="flex justify-between items-center mb-10 border-b border-emerald-900/60 pb-6 relative z-10 p-6">
           <div>
             <h1 className="text-4xl font-bold tracking-widest uppercase text-emerald-300">
               {managerDept} COMMAND
             </h1>
             <p className="text-sm font-semibold text-emerald-400 tracking-widest uppercase mt-2">
-              Active Roster // Director: <span className="text-emerald-200">{manager.name || 'Director'}</span>
+              Active Roster // Director: <span className="text-emerald-200">{manager?.name || 'Director'}</span>
             </p>
           </div>
           <button 
@@ -99,7 +94,6 @@ const AdminAgents = () => {
           </button>
         </div>
 
-        {/* --- הלוח המרכזי: סוכנים פעילים --- */}
         <div className="flex-1 overflow-auto pr-4 pl-6 mr-16 relative z-10 custom-scrollbar">
           <div className="flex items-center gap-4 mb-8">
              <Activity className="text-emerald-400 animate-pulse" size={24} />
@@ -146,7 +140,6 @@ const AdminAgents = () => {
           )}
         </div>
 
-        {/* --- מגירת כל הסוכנים --- */}
         <div className={`fixed top-0 right-0 h-full bg-[#010605]/95 backdrop-blur-2xl border-l-2 border-emerald-500/50 transition-all duration-300 ease-in-out z-40 shadow-[-30px_0_60px_rgba(0,0,0,0.9)] ${showAllAgents ? 'w-full md:w-[450px]' : 'w-0'}`}>
           <div className="p-6 w-full md:w-[450px] h-full flex flex-col">
             <div className="flex justify-between items-center mb-6 border-b border-emerald-500/30 pb-4">
@@ -180,7 +173,6 @@ const AdminAgents = () => {
           </div>
         </div>
 
-        {/* --- כפתור פתיחת המגירה --- */}
         {!showAllAgents && (
           <button 
             onClick={() => setShowAllAgents(true)} 
@@ -194,7 +186,6 @@ const AdminAgents = () => {
           </button>
         )}
 
-        {/* --- מודל אישור מחיקה (שקוף) --- */}
         {agentToDelete && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={() => setAgentToDelete(null)} />
@@ -222,15 +213,6 @@ const AdminAgents = () => {
           <AddAgentModal 
             managerDept={managerDept} 
             onClose={() => setShowModal(false)} 
-            onAdd={async (data: any) => {
-              try {
-                await createAgent(data, manager.id || 1);
-                await loadData();
-              } catch(e) {
-                alert('System Error: Could not recruit agent.');
-              }
-              setShowModal(false);
-            }} 
           />
         )}
       </div>
@@ -238,11 +220,15 @@ const AdminAgents = () => {
   );
 };
 
-const AddAgentModal = ({ managerDept, onClose, onAdd }: any) => {
+const AddAgentModal = ({ managerDept, onClose }: any) => {
   const availableSpecialties = SPECIALTY_MAP[managerDept] || SPECIALTY_MAP['OPERATIONS'];
-  const manager = JSON.parse(localStorage.getItem('user') || '{}');
   
-  const [status, setStatus] = useState<'idle' | 'scanning' | 'success'>('idle'); //תהליך ההוספה
+  const { user: manager } = useAuth();
+  
+  // פונקציית ההוספה מרידקס!
+  const [createAgent] = useCreateAgentMutation();
+  
+  const [status, setStatus] = useState<'idle' | 'scanning' | 'success'>('idle');
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -252,14 +238,22 @@ const AddAgentModal = ({ managerDept, onClose, onAdd }: any) => {
     specialty: availableSpecialties[0].value,
   });
 
-  const handleSubmit = (e: any) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault();
     setStatus('scanning');
-      setTimeout(() => {
+      setTimeout(async () => {
         setStatus('success');         
-        setTimeout(() => {
-            onAdd(formData);
-        }, 1500);
+        try {
+            // קריאה חכמה דרך רידקס - תרענן את רשימת הסוכנים לבד!
+            await createAgent({ agentData: formData, managerId: manager?.id || 1 }).unwrap();
+            setTimeout(() => {
+                onClose();
+            }, 1500);
+        } catch(err) {
+            console.error(err);
+            setStatus('idle');
+            alert('System Error: Could not recruit agent.');
+        }
     }, 2500);
   };
 
@@ -284,7 +278,7 @@ const AddAgentModal = ({ managerDept, onClose, onAdd }: any) => {
                   <p>{`>`} Initializing recruitment protocol...</p>
                   <p>{`>`} Verifying codename: {formData.codename}...</p>
                   <p>{`>`} Encrypting personnel file...</p>
-                  <p>{`>`} Linking to Director: {manager.name}...</p>
+                  <p>{`>`} Linking to Director: {manager?.name}...</p>
                   <p className="text-white mt-2">{`>`} UPLOADING DATA TO HQ...</p>
                 </div>
                 <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-black to-transparent pointer-events-none" />
@@ -348,7 +342,7 @@ const AddAgentModal = ({ managerDept, onClose, onAdd }: any) => {
                       <Lock size={12} /> RECRUITING DIRECTOR (AUTO)
                     </label>
                     <div className="w-full bg-[#020f0a] border border-emerald-500/20 p-3 text-sm text-emerald-500/70 font-bold tracking-widest flex items-center">
-                      ID: {manager.id || 5} // {manager.name || 'רן ארגמן'}
+                      ID: {manager?.id || 5} // {manager?.name || 'רן ארגמן'}
                     </div>
                   </div>
                 </div>

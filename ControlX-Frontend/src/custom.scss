@@ -1,0 +1,14 @@
+$emerald-neon: #34d399;
+$cyber-dark: #010a08;
+
+.cyber-glow-text {
+  color: $emerald-neon;
+  background-color: transparent;
+  transition: all 0.3s ease;
+
+  &:hover {
+    color: white;
+    text-shadow: 0 0 15px $emerald-neon, 0 0 30px $emerald-neon;
+    cursor: pointer;
+  }
+}

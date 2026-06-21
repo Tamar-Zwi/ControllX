@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import AdminLayout from '../components/AdminLayout';
 import { Activity, Users, Radio, BellRing, MessageSquare, Clock3 } from 'lucide-react';
-import { getAgentsByDept, getMissionsByManager } from '../lib/api';
+import { useAuth } from '../hooks/useAuth';
+import { useGetMissionsByManagerQuery, useGetAgentsByDeptQuery } from '../store/apiSlice';
 
 type ReportSeverity = 'low' | 'medium' | 'high';
 
@@ -50,51 +51,29 @@ const FALLBACK_DATA: OverviewData = {
 };
 
 const AdminOverview = () => {
-  const [data, setData] = useState<OverviewData>(FALLBACK_DATA); 
-  const [loading, setLoading] = useState(true);
+  const { user: manager } = useAuth();
+  const managerDept = manager?.department || 'OPERATIONS';
+  const managerId = manager?.id;
 
-  const manager = JSON.parse(localStorage.getItem('user') || '{}');
-  const managerDept = manager.department || 'OPERATIONS';
-  const managerId = manager.id;
+  // --- הקסם של RTK Query מתחיל כאן ---
+  const { data: missionsData = [], isLoading: missionsLoading } = useGetMissionsByManagerQuery(managerId, {
+    skip: !managerId,
+    pollingInterval: 15000, 
+  });
 
-  useEffect(() => {
-    let mounted = true;
+  const { data: agentsData = [], isLoading: agentsLoading } = useGetAgentsByDeptQuery(managerDept, {
+    skip: !managerDept,
+    pollingInterval: 15000,
+  });
 
-    const loadOverview = async () => {
-      if (!managerId) {
-        if (mounted) {
-          setData(FALLBACK_DATA);
-          setLoading(false);
-        }
-        return;
-      }
+  const loading = missionsLoading || agentsLoading;
+  // --- הקסם נגמר ---
 
-      try {
-        setLoading(true);
-
-        const [missionsData, agentsData] = await Promise.all([
-          getMissionsByManager(managerId),
-          getAgentsByDept(managerDept),
-        ]);
-
-        const next = buildOverviewFromExistingApis(missionsData || [], agentsData || []);
-        if (mounted) setData(next);
-      } catch (err) {
-        console.error('Failed to load overview data', err);
-        if (mounted) setData(FALLBACK_DATA);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-
-    loadOverview();
-    const interval = setInterval(loadOverview, 15000);
-
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
-  }, [managerId, managerDept]);
+  // מעבד את הנתונים ברגע שהם מגיעים מהשרת
+  const data = useMemo(() => {
+    if (loading) return FALLBACK_DATA;
+    return buildOverviewFromExistingApis(missionsData, agentsData);
+  }, [missionsData, agentsData, loading]);
 
   const graphPath = useMemo(() => buildSparklinePath(data.missionTrend, 900, 220), [data.missionTrend]);
 

@@ -4,12 +4,13 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import toast, { Toaster } from 'react-hot-toast';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client'; 
+import { useAuth } from '../hooks/useAuth';
 
 const AdminLayout = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     if (!user || !user.id) return;
@@ -42,7 +43,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
     return () => {
       stompClient.deactivate();
     };
-  }, [user.id]);
+  }, [user?.id]); 
 
   const showTacticalToast = (msg: { senderName: string; textContent: string }) => {
     toast.custom((t) => (
@@ -108,10 +109,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
         </nav>
 
         <button 
-          onClick={() => {
-            localStorage.removeItem('user');
-            navigate('/');
-          }} 
+          onClick={logout} 
           className="flex items-center justify-center gap-3 p-4 text-red-900 hover:text-red-500 hover:bg-red-900/10 border-t border-emerald-900/10 transition-all font-bold text-xs tracking-widest"
         >
           <LogOut size={18} />
@@ -129,10 +127,10 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
           <div className="flex items-center gap-4 bg-emerald-950/30 px-5 py-1.5 rounded-full border border-emerald-900/50 hover:bg-emerald-900/20 transition-colors cursor-default">
             <div className="text-right">
               <div className="text-[9px] text-emerald-700 uppercase font-bold tracking-widest">
-                {user.department || 'COMMAND'} 
+                {user?.department || 'COMMAND'} 
               </div>
               <div className="text-xs text-emerald-400 font-black tracking-wider uppercase">
-                {user.name || 'UNKNOWN ADMIN'}
+                {user?.name || 'UNKNOWN ADMIN'}
               </div>
             </div>
             <div className="w-8 h-8 rounded-full bg-emerald-900/40 border border-emerald-500/50 flex items-center justify-center text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.2)]">

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SockJS from 'sockjs-client';
 import { Stomp } from '@stomp/stompjs';
-import { fetchWithAuth, markMessagesAsRead } from '../lib/api';
 
 interface Message {
   id?: number;
@@ -18,6 +17,25 @@ interface ChatWindowProps {
   selectedAgentId: number | null;
   missionId: number;
 }
+
+const BASE_URL = "http://localhost:8080/api";
+
+const apiCall = async (endpoint: string, options: RequestInit = {}) => {
+  const userStr = localStorage.getItem('user');
+  const token = userStr ? JSON.parse(userStr).token : '';
+
+  const headers = new Headers(options.headers);
+  headers.set('Content-Type', 'application/json');
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+
+  const response = await fetch(`${BASE_URL}${endpoint}`, { ...options, headers });
+  if (response.status === 401 || response.status === 403) {
+    localStorage.removeItem('user');
+    window.location.href = '/';
+    throw new Error("Unauthorized");
+  }
+  return response;
+};
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({ currentUser, selectedAgentId, missionId }) => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -40,11 +58,11 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ currentUser, selectedAge
     const fetchHistory = async () => {
       try {
         if (selectedAgentId !== null) {
-            const response = await fetchWithAuth(`/chat/mission/${missionId}/between/${currentUser.id}/and/${selectedAgentId}`);
+            const response = await apiCall(`/chat/mission/${missionId}/between/${currentUser.id}/and/${selectedAgentId}`);
             if (response.ok) {
                const data = await response.json();
                setMessages(data);
-               await markMessagesAsRead(missionId, selectedAgentId, currentUser.id);
+               await apiCall(`/chat/mission/${missionId}/read?senderId=${selectedAgentId}&myId=${currentUser.id}`, { method: 'POST' });
             }
         } else {
             setMessages([]);
@@ -95,7 +113,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ currentUser, selectedAge
         : { missionId, senderId: currentUser.id, recipientId: selectedAgentId, text: newMessage };
 
     try {
-      const response = await fetchWithAuth(endpoint, {
+      const response = await apiCall(endpoint, {
         method: 'POST',
         body: JSON.stringify(chatRequest)
       });

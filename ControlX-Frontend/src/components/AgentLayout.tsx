@@ -1,21 +1,12 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
 import { LogOut, Shield, Wifi, Target } from "lucide-react";
+import { useAuth } from '../hooks/useAuth'; 
 
-const AgentLayout = ({
-  children,
-}: {
+const AgentLayout = ({children,}: {
   children: React.ReactNode;
   agentName: string;
 }) => {
-  const navigate = useNavigate();
-
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
-
-  const handleLogout = () => {
-    localStorage.removeItem("user");
-    navigate("/");
-  };
+  const { user, logout } = useAuth(); 
 
   return (
     <div className="flex h-screen bg-[#020504] font-mono overflow-hidden select-none">
@@ -32,10 +23,10 @@ const AgentLayout = ({
 
           <div className="bg-emerald-950/20 border border-emerald-800 p-3 rounded-sm">
             <p className="text-sm font-black text-white uppercase tracking-tighter truncate">
-              {user.name || "Ghost Agent"}
+              {user?.name || "Ghost Agent"}
             </p>
             <p className="text-[10px] text-emerald-500 font-mono mt-1">
-              ID: {user.id || "0000"}
+              ID: {user?.id || "0000"}
             </p>
           </div>
         </div>
@@ -54,7 +45,7 @@ const AgentLayout = ({
         {/* Footer: Logout */}
         <div className="p-6 border-t border-emerald-900/30">
           <button
-            onClick={handleLogout}
+            onClick={logout} 
             className="w-full flex items-center justify-center gap-2 bg-red-950/20 border border-red-900/50 py-3 text-red-500 text-xs font-black hover:bg-red-600 hover:text-black transition-all uppercase tracking-widest"
           >
             <LogOut size={16} /> Log_Out.exe

@@ -1,45 +1,43 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import AgentLayout from '../components/AgentLayout';
 import { Activity, AlertCircle, Zap, ShieldAlert, Target, FileText } from 'lucide-react';
-import { getMissions, submitReport } from '../lib/api';
 import { ChatWindow } from '../components/ChatWindow'; 
 import toast, { Toaster } from 'react-hot-toast'; 
+import { useAuth } from '../hooks/useAuth'; 
+import { useGetMissionsQuery, useSubmitReportMutation } from '../store/apiSlice';
 
 const AgentDashboard = () => {
-  const [activeMission, setActiveMission] = useState<any>(null);
   const [newReport, setNewReport] = useState('');
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  // --- הקסם של רידקס במקום useEffect ---
+  const { data: allMissions = [], isLoading: loading } = useGetMissionsQuery(undefined, {
+    pollingInterval: 15000 // רענון אוטומטי למשימות
+  });
 
-  useEffect(() => {
-    loadMission();
-  }, []);
+  const [submitReport] = useSubmitReportMutation();
 
-  const loadMission = async () => {
-    try {
-      setLoading(true);
-      const allMissions = await getMissions(); 
-      const myActiveMissions = allMissions.filter((m: any) => 
-        m.assignedAgents?.some((agent: any) => agent.id === user.id) &&
-        (m.status === 'IN_PROGRESS' || m.status === 'PENDING')
-      );
-
-      if (myActiveMissions.length > 0) {
-          setActiveMission(myActiveMissions[0]);
-      }
-    } catch (err) {
-      console.error("Failed to load agent missions", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // מחשב אוטומטית את המשימה הפעילה של הסוכן
+  const activeMission = useMemo(() => {
+    const myActiveMissions = allMissions.filter((m: any) => 
+      m.assignedAgents?.some((agent: any) => agent.id === user?.id) && 
+      (m.status === 'IN_PROGRESS' || m.status === 'PENDING')
+    );
+    return myActiveMissions.length > 0 ? myActiveMissions[0] : null;
+  }, [allMissions, user?.id]);
+  // ------------------------------------
 
   const handleSendReport = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newReport.trim() || !activeMission) return;
+    if (!newReport.trim() || !activeMission || !user?.id) return; 
+    
     try {
-      await submitReport(activeMission.id, user.id, newReport);
+      await submitReport({ 
+        missionId: activeMission.id, 
+        agentId: user.id, 
+        text: newReport 
+      }).unwrap();
+      
       setNewReport('');
       
       toast.success('REPORT TRANSMITTED SUCCESSFULLY', {
@@ -70,8 +68,7 @@ const AgentDashboard = () => {
   };
 
   return (
-    <AgentLayout agentName={user.codename || user.fullName}>
-      {/* הוספנו את הרכיב שמצייר את ההתראות על המסך */}
+    <AgentLayout agentName={user?.codename || user?.fullName || 'AGENT'}>
       <Toaster position="top-center" />
 
       <div className="p-8 h-full flex flex-col font-mono text-xs uppercase tracking-widest relative bg-[#020504]">

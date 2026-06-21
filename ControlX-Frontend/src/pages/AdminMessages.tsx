@@ -1,40 +1,33 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
-import { Globe2, ShieldAlert, X, MessageSquare } from 'lucide-react';
-import { getAgentsByDept, getMissionsByManager, getUnreadCount } from '../lib/api'; 
+import { Globe2, MessageSquare } from 'lucide-react';
 import { ChatWindow } from '../components/ChatWindow';
+import { useAuth } from '../hooks/useAuth'; 
+import { 
+  useGetAgentsByDeptQuery, 
+  useGetMissionsByManagerQuery, 
+  useGetUnreadCountQuery 
+} from '../store/apiSlice';
 
 const AgentContactButton = ({ agent, fromMission, allMissions, selectedAgent, isGroupChat, onSelect, managerId }: any) => {
-  const [unread, setUnread] = useState(0); //כמות ההודעות שלא נקראו
+  const activeMissionId = useMemo(() => {
+    if (fromMission?.id) return fromMission.id;
+    const m = allMissions.find((m: any) => 
+      (m.status === 'IN_PROGRESS' || m.status === 'PENDING') &&
+      m.assignedAgents?.some((a: any) => a.id === agent.id)
+    );
+    return m?.id;
+  }, [fromMission, allMissions, agent.id]);
 
-  useEffect(() => {
-    const fetchUnread = async () => {
-      try {
-        let activeMissionId = fromMission?.id;
-        if (!activeMissionId) { //אם לא הגענו מתוך משימה אז מחפש שיוך של הסוכן למשימה
-          const m = allMissions.find((m: any) => 
-            (m.status === 'IN_PROGRESS' || m.status === 'PENDING') &&
-            m.assignedAgents?.some((a: any) => a.id === agent.id)
-          );
-          activeMissionId = m?.id;
-        }
+  const shouldFetchUnread = Boolean(activeMissionId && managerId && selectedAgent?.id !== agent.id);
 
-        if (activeMissionId && managerId) {
-          const count = await getUnreadCount(activeMissionId, agent.id, managerId);
-          setUnread(count);
-        }
-      } catch (e) { console.error("Failed to fetch unread count"); }
-    };
+  const { data: unreadCount = 0 } = useGetUnreadCountQuery(
+    { missionId: activeMissionId, senderId: agent.id, myId: managerId },
+    { skip: !shouldFetchUnread, pollingInterval: 5000 }
+  );
 
-    if (selectedAgent?.id !== agent.id) {
-        fetchUnread();
-        const interval = setInterval(fetchUnread, 5000);
-        return () => clearInterval(interval);
-    } else {
-        setUnread(0); 
-    }
-  }, [agent.id, fromMission, allMissions, managerId, selectedAgent]);
+  const unread = selectedAgent?.id === agent.id ? 0 : unreadCount;
 
   return (
     <button
@@ -65,44 +58,36 @@ const AdminMessages = () => {
   const location = useLocation();
   const fromMission = location.state?.fromMission || null;
 
-  const [agents, setAgents] = useState<any[]>([]);
-  const [allMissions, setAllMissions] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  
   const [selectedAgent, setSelectedAgent] = useState<any>(null);
   const [isGroupChat, setIsGroupChat] = useState<boolean>(false);
 
-  const manager = JSON.parse(localStorage.getItem('user') || '{}');
-  const managerDept = manager.department || 'OPERATIONS';
-  const managerId = manager.id;
+  const { user: manager } = useAuth();
+  const managerDept = manager?.department || 'OPERATIONS'; 
+  const managerId = manager?.id;
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        const [agentsData, missionsData] = await Promise.all([
-          getAgentsByDept(managerDept),
-          getMissionsByManager(managerId)
-        ]);
-        
-        setAllMissions(missionsData || []);
+  const { data: agentsData = [], isLoading: agentsLoading } = useGetAgentsByDeptQuery(managerDept, { skip: !managerDept });
+  const { data: allMissions = [], isLoading: missionsLoading } = useGetMissionsByManagerQuery(managerId || 0, { skip: !managerId });
+  const loading = agentsLoading || missionsLoading;
 
-        if (fromMission && fromMission.assignedAgents) {
-          const missionAgentIds = fromMission.assignedAgents.map((a: any) => a.id);
-          const filteredAgents = agentsData.filter((a: any) => missionAgentIds.includes(a.id));
-          setAgents(filteredAgents);
-        } else {
-          setAgents(agentsData);
-        }
-      } catch (err) {
-        console.error("Failed to load data", err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const agents = useMemo(() => {
+    if (fromMission && fromMission.assignedAgents) {
+      const missionAgentIds = fromMission.assignedAgents.map((a: any) => a.id);
+      return agentsData.filter((a: any) => missionAgentIds.includes(a.id));
+    }
+    return agentsData;
+  }, [agentsData, fromMission]);
 
-    if (managerId) loadData();
-  }, [managerDept, managerId, fromMission]);
+  const currentMissionId = useMemo(() => {
+    if (fromMission?.id) return fromMission.id;
+    if (selectedAgent) {
+      const m = allMissions.find((m: any) => 
+        (m.status === 'IN_PROGRESS' || m.status === 'PENDING') &&
+        m.assignedAgents?.some((a: any) => a.id === selectedAgent.id)
+      );
+      return m?.id;
+    }
+    return null;
+  }, [fromMission, selectedAgent, allMissions]);
 
   const selectAgent = (agent: any) => {
     setIsGroupChat(false);
@@ -144,7 +129,7 @@ const AdminMessages = () => {
                       </div>
                     </button>
                   )}
-                  {agents.map(agent => (
+                  {agents.map((agent: any) => (
                     <AgentContactButton
                       key={agent.id}
                       agent={agent}
@@ -162,16 +147,22 @@ const AdminMessages = () => {
           </div>
 
           <div className="flex-1 flex flex-col bg-[#02120e]/60 border border-emerald-700/40 rounded-lg overflow-hidden relative">
-            {(selectedAgent || isGroupChat) && fromMission ? (
+            {currentMissionId && (selectedAgent || isGroupChat) ? (
               <ChatWindow 
                 currentUser={manager} 
-                missionId={fromMission.id} 
+                missionId={currentMissionId} 
                 selectedAgentId={selectedAgent?.id || null} 
               />
             ) : (
-              <div className="flex-1 flex items-center justify-center text-center text-emerald-900/50">
+              <div className="flex-1 flex flex-col items-center justify-center text-center text-emerald-900/50">
                 <MessageSquare size={48} className="mb-4" />
                 <p>Select asset or broadcast to start</p>
+                {/* הודעה חדשה: אם בחרת סוכן שאין לו משימה פעילה עכשיו */}
+                {selectedAgent && !currentMissionId && (
+                  <p className="text-red-500 font-bold text-xs mt-2 animate-pulse uppercase tracking-widest">
+                    AGENT HAS NO ACTIVE MISSION
+                  </p>
+                )}
               </div>
             )}
           </div>
