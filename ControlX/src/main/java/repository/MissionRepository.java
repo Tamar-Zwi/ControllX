@@ -7,6 +7,6 @@ import java.util.List;
 
 @Repository
 public interface MissionRepository extends JpaRepository<Mission, Long> {
-    // השורה הזו מאפשרת שליפת משימות אך ורק של המנהל שיצר אותן
+    // This line allows fetching missions only for the manager who created them
     List<Mission> findByCreatorManagerId(Long managerId);
 }

@@ -43,26 +43,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        jwt = authHeader.substring(7); // בידוד הטוקן
+        jwt = authHeader.substring(7); // Isolate the token
 
         try {
-            employeeId = jwtService.extractEmployeeId(jwt);//שליפת ID של המשתמש
+            employeeId = jwtService.extractEmployeeId(jwt); // Extract the user's ID
 
-            // אם מצאנו ID והמשתמש עדיין לא מאומת בבקשה הנוכחית
+            // If an ID was found and the user isn't yet authenticated in the current request
             if (employeeId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 if (jwtService.isTokenValid(jwt)) {
-                    String role = jwtService.extractRole(jwt); // חילוץ התפקיד
+                    String role = jwtService.extractRole(jwt); // Extract the role
 
-                    // יוצרים אובייקט אימות
+                    // Create an authentication object
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             employeeId,
                             null,
                             Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role))
                     );
-                    //מעתיקים לאוביקט עוד פרטים מהבקשה
+                    // Copy additional details from the request onto the object
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                    // מעדכנים את מערכת האבטחה שהמשתמש מורשה לפעולה הזו
+                    // Update the security context that the user is authorized for this action
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }

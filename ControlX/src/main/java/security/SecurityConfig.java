@@ -31,17 +31,17 @@ public class SecurityConfig {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
-                //בכל בקשה יצטרכו לשלוח טוקן
+                // Every request will need to send a token
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // הגדרת חוקי הגישה לנתיבים
+                // Define access rules for routes
                 .authorizeHttpRequests(auth -> auth
-                        // דף הלוגין וחיבור ה-WebSocket פתוחים לחלוטין לכולם
+                        // The login page and the WebSocket connection are fully open to everyone
                         .requestMatchers("/api/employees/login/**", "/ws-chat/**").permitAll()
-                        // כל שאר הבקשות במערכת מחייבות טוקן תקף
+                        // All other requests in the system require a valid token
                         .anyRequest().authenticated()
                 )
 
-                // הוספת ה JWT לפני הפילטר הרגיל של ספרינג כדי שלא יצטרך להכניס סיסמא
+                // Add the JWT filter before Spring's standard filter so a password isn't required
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -53,10 +53,10 @@ public class SecurityConfig {
         configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Cache-Control"));
-        configuration.setAllowCredentials(true);//אפשר להעביר מידע מסווג בין השרת ללקוח
+        configuration.setAllowCredentials(true); // Allow credentials to be passed between server and client
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);//החוקים חלים על כל הנתיבים
+        source.registerCorsConfiguration("/**", configuration); // Rules apply to all routes
         return source;
     }
 }

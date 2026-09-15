@@ -17,17 +17,17 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 public class AgencyEmployee {
 
     public enum ClearanceLevel {
-        STANDARD, //סיווג בסיסי
-        CONFIDENTIAL,//שמור
-        SECRET,//סודי
-        TOP_SECRET,//סודי ביותר
-        COSMIC //רמת הסודיות הגבוהה ביותר
+        STANDARD, // Basic clearance
+        CONFIDENTIAL, // Restricted
+        SECRET, // Secret
+        TOP_SECRET, // Top secret
+        COSMIC // Highest clearance level
     }
     public enum Department {
-        CYBER,          // יחידת סייבר
-        INTELLIGENCE,   // אגף מודיעין
-        OPERATIONS,     // אגף מבצעים
-        LOGISTICS       // לוגיסטיקה וציוד
+        CYBER,          // Cyber unit
+        INTELLIGENCE,   // Intelligence division
+        OPERATIONS,     // Operations division
+        LOGISTICS       // Logistics and equipment
     }
 
     @Id

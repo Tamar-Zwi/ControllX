@@ -12,17 +12,17 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // יצירת צינור תקשורת
+        // Create the communication channel
         registry.addEndpoint("/ws-chat")
                 .setAllowedOriginPatterns("*")
-                .withSockJS(); // רשת ביטחון למניעת ניתוקים
+                .withSockJS(); // Fallback network to prevent disconnections
     }
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
-        // מהשרת ללקוח
+        // Server to client
         registry.enableSimpleBroker("/topic");
-        //מהחקוח לשרת
+        // Client to server
         registry.setApplicationDestinationPrefixes("/app");
     }
 }

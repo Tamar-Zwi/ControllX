@@ -17,7 +17,7 @@ import java.util.HashMap;
 public class MissionController {
 
     private final MissionService missionService;
-    // מאפשר לדחוף הודעות בזמן אמת
+    // Allows pushing messages in real time
     private final SimpMessagingTemplate messagingTemplate;
 
     public MissionController(MissionService missionService, SimpMessagingTemplate messagingTemplate) {
@@ -25,19 +25,19 @@ public class MissionController {
         this.messagingTemplate = messagingTemplate;
     }
 
-    //  שליפת כל המשימות
+    // Fetch all missions
     @GetMapping
     public List<Mission> getAll() {
         return missionService.getAllMissions();
     }
 
-    //  מסנן משימות לפי מנהל - מוגן מפני מזהה שגוי
+    // Filters missions by manager - guarded against an invalid ID
     @GetMapping("/manager/{managerId}")
     public List<Mission> getMissionsByManager(@PathVariable Long managerId) {
         return missionService.getMissionsByManager(managerId);
     }
 
-    //  יצירת משימה חדשה
+    // Create a new mission
     @PostMapping
     public Mission createMission(@RequestBody Mission mission) {
         if (mission == null) {
@@ -46,7 +46,7 @@ public class MissionController {
         return missionService.saveMission(mission);
     }
 
-    //  הגשת דיווח למשימה + שידור ההתראה בזמן אמת למנהל
+    // Submit a report for a mission + broadcast a real-time notification to the manager
     @PostMapping("/{missionId}/report")
     public Report submitReport(@PathVariable Long missionId, @RequestParam Long agentId, @RequestParam String text) {
         if (text == null || text.trim().isEmpty()) {
@@ -55,21 +55,21 @@ public class MissionController {
         try {
             Report savedReport = missionService.addReport(missionId, agentId, text);
             try {
-                // זיהוי מנהל שיצר את המשימה
+                // Identify the manager who created the mission
                 Long managerId = savedReport.getMission().getCreatorManager().getId();
 
                 Map<String, Object> notification = new HashMap<>();
                 notification.put("senderId", agentId);
 
                 Map<String, Object> senderInfo = new HashMap<>();
-                // שולפים את שם הסוכן מהדיווח
+                // Fetch the agent's name from the report
                 senderInfo.put("codename", savedReport.getAuthor().getCodename());
                 notification.put("sender", senderInfo);
 
-                // שהמנהל ידע שזה דיווח ולא צ'אט רגיל
+                // So the manager knows this is a report and not a regular chat message
                 notification.put("text", "[FIELD REPORT] " + text);
 
-                // משדרים התראות למנהל
+                // Broadcast notifications to the manager
                 messagingTemplate.convertAndSend("/topic/notifications/user/" + managerId, notification);
             } catch (Exception ex) {
                 System.out.println("WebSocket Report Notification Failed: " + ex.getMessage());
@@ -80,7 +80,7 @@ public class MissionController {
         }
     }
 
-    //  השלמת משימה
+    // Complete a mission
     @PostMapping("/{missionId}/complete")
     public Mission completeMission(@PathVariable Long missionId) {
         try {
@@ -90,7 +90,7 @@ public class MissionController {
         }
     }
 
-    //  סיכום משימה באמצעות AI
+    // Summarize the mission using AI
     @PostMapping("/{id}/summarize")
     public ResponseEntity<?> summarizeMission(@PathVariable Long id) {
         try {
@@ -100,7 +100,7 @@ public class MissionController {
         }
     }
 
-    //  מחיקת משימה
+    // Delete a mission
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteMission(@PathVariable Long id) {
         try {

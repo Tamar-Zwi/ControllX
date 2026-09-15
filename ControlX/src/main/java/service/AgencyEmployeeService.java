@@ -26,18 +26,18 @@ public class AgencyEmployeeService {
         return employeeRepository.save(employee);
     }
 
-    // גיוס סוכן חכם
+    // Smart agent recruitment
     @Transactional
     public FieldAgent recruitNewAgent(FieldAgent agent, Long managerId) {
-        // שליפת המנהל המגייס
+        // Fetch the recruiting manager
         DeskManager manager = (DeskManager) employeeRepository.findById(managerId)
                 .orElseThrow(() -> new RuntimeException("מנהל מגייס לא נמצא במערכת!"));
 
-        // הסוכן מקבל את המחלקה והמנהל של מי שגייס אותו
+        // The agent inherits the department and manager of whoever recruited them
         agent.setDepartment(manager.getDepartment());
         agent.setRecruitingManager(manager);
 
-        // הגדרת סטטוס ראשוני
+        // Set initial status
         if (agent.getStatus() == null) {
             agent.setStatus(FieldAgent.AgentStatus.AVAILABLE);
         }
@@ -56,23 +56,23 @@ public class AgencyEmployeeService {
         if (employee instanceof FieldAgent) {
             FieldAgent agent = (FieldAgent) employee;
 
-            //  שליפת כל המשימות שקשורות לסוכן
+            // Fetch all missions related to the agent
             List<Mission> allMissions = missionRepository.findAll();
 
             for (Mission mission : allMissions) {
                 if (mission.getAssignedAgents() != null && mission.getAssignedAgents().contains(agent)) {
 
-                    // בדיקה אם המשימה פעילה
+                    // Check whether the mission is active
                     boolean isActive = mission.getStatus() == Mission.MissionStatus.IN_PROGRESS;
 
-                    // בדיקה אם הוא הסוכן האחרון במשימה
+                    // Check whether they are the last agent in the mission
                     boolean isLastAgent = mission.getAssignedAgents().size() == 1;
 
                     if (isActive && isLastAgent) {
-                        // משימה פעילה והוא לבד - מוחקים את המשימה
+                        // Active mission and they are alone - delete the mission
                         missionRepository.delete(mission);
                     } else {
-                        // יש עוד סוכנים או שהמשימה לא פעילה - רק מסירים אותו מהרשימה
+                        // There are other agents, or the mission isn't active - just remove them from the list
                         mission.getAssignedAgents().remove(agent);
                         missionRepository.save(mission);
                     }
@@ -80,7 +80,7 @@ public class AgencyEmployeeService {
             }
         }
 
-        // בסוף מוחקים את הסוכן עצמו
+        // Finally, delete the agent itself
         employeeRepository.deleteById(id);
     }
 }

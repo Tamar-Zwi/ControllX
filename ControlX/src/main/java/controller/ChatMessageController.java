@@ -39,7 +39,7 @@ public class ChatMessageController {
         public String text;
     }
 
-    //  שליחת הודעה + שידור אוטומטי בזמן אמת
+    // Send a message + automatic real-time broadcast
     @PostMapping("/send")
     public ResponseEntity<?> sendMessage(@RequestBody MessageRequest request) {
         Mission mission = missionRepository.findById(request.missionId)
@@ -50,17 +50,17 @@ public class ChatMessageController {
                 .orElseThrow(() -> new RuntimeException("Recipient not found"));
 
         ChatMessage savedMessage = chatMessageService.saveMessage(mission, sender, recipient, request.text);
-        // שידור לצאט האישי
+        // Broadcast to the private chat
         String destination = "/topic/messages/mission/" + request.missionId + "/user/" + request.recipientId;
         messagingTemplate.convertAndSend(destination, savedMessage);
 
-        // שידור להודעות הקופצות
+        // Broadcast to popup notifications
         String globalDestination = "/topic/notifications/user/" + request.recipientId;
         messagingTemplate.convertAndSend(globalDestination, savedMessage);
         return ResponseEntity.ok(savedMessage);
     }
 
-    // שידור הודעה לכל המשימה (Broadcast)
+    // Broadcast a message to the entire mission
     @PostMapping("/broadcast")
     public ResponseEntity<?> broadcastMessage(@RequestBody MessageRequest request) {
         Mission mission = missionRepository.findById(request.missionId)
@@ -75,7 +75,7 @@ public class ChatMessageController {
         return ResponseEntity.ok(savedMessage);
     }
 
-    //  שליפת היסטוריית שיחה פרטית
+    // Fetch private chat history
     @GetMapping("/mission/{missionId}/between/{user1Id}/and/{user2Id}")
     public ResponseEntity<List<ChatMessage>> getPrivateChat(
             @PathVariable Long missionId,
@@ -86,7 +86,7 @@ public class ChatMessageController {
         return ResponseEntity.ok(messages);
     }
 
-    //  סימון הודעות כ"נקראו"
+    // Mark messages as "read"
     @PostMapping("/mission/{missionId}/read")
     public ResponseEntity<?> markAsRead(
             @PathVariable Long missionId,
@@ -97,7 +97,7 @@ public class ChatMessageController {
         return ResponseEntity.ok().build();
     }
 
-    //  כמות הודעות שלא נקראו עבור התראות
+    // Unread message count, used for notifications
     @GetMapping("/mission/{missionId}/unread")
     public ResponseEntity<Long> getUnreadCount(
             @PathVariable Long missionId,
@@ -108,7 +108,7 @@ public class ChatMessageController {
         return ResponseEntity.ok(count);
     }
 
-    //  תצוגה מקדימה של הודעה אחרונה
+    // Preview of the last message
     @GetMapping("/mission/{missionId}/last")
     public ResponseEntity<ChatMessage> getLastMessage(@PathVariable Long missionId) {
         ChatMessage lastMessage = chatMessageService.getLastMessageByMission(missionId);

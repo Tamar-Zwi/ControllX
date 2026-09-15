@@ -31,7 +31,7 @@ public class AgencyEmployeeController {
                 .findFirst()
                 .map(employee -> {
                     String employeeType = employee instanceof entity.DeskManager ? "DeskManager" : "FieldAgent";
-                    String token = jwtService.generateToken(employee.getId(), employeeType, employee.getFullName());//יצירת טוקן
+                    String token = jwtService.generateToken(employee.getId(), employeeType, employee.getFullName()); // Generate a token
                     Map<String, Object> response = new HashMap<>();
                     response.put("id", employee.getId());
                     response.put("name", employee.getFullName());
@@ -44,13 +44,13 @@ public class AgencyEmployeeController {
                 .orElseThrow(() -> new IllegalArgumentException("קוד הגישה (Passkey) שהוזן אינו קיים במערכת."));
     }
 
-    //  גיוס סוכן חכם
+    // Smart agent recruitment
     @PostMapping("/recruit")
     public AgencyEmployee recruitAgent(@RequestBody FieldAgent agent, @RequestParam Long managerId) {
         return employeeService.recruitNewAgent(agent, managerId);
     }
 
-    //  שליפת סוכנים לפי מחלקה - מעודכן לטיפול ב-Enum שגוי
+    // Fetch agents by department - updated to handle an invalid Enum
     @GetMapping("/department/{dept}")
     public List<FieldAgent> getAgentsByDepartment(@PathVariable String dept) {
         try {
@@ -66,20 +66,20 @@ public class AgencyEmployeeController {
         }
     }
 
-    //  מחיקת עובד
+    // Delete an employee
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteEmployee(@PathVariable Long id) {
         employeeService.deleteEmployee(id);
         return ResponseEntity.ok().build();
     }
 
-    //  יצירת עובד רגיל
+    // Create a regular employee
     @PostMapping
     public AgencyEmployee create(@RequestBody AgencyEmployee employee) {
         return employeeService.saveEmployee(employee);
     }
 
-    //  שליפת כל העובדים בארגון
+    // Fetch all employees in the organization
     @GetMapping
     public List<AgencyEmployee> getAll() {
         return employeeService.getAllEmployees();

@@ -33,25 +33,25 @@ public class ChatMessageService {
     }
 
 
-     //  שליפת היסטוריית שיחה פרטית בין מנהל וסוכן במשימה ספציפית
+     // Fetch private chat history between a manager and an agent in a specific mission
 
     public List<ChatMessage> getPrivateChatHistory(Long missionId, Long user1Id, Long user2Id) {
         return chatMessageRepository.findPrivateChatHistory(missionId, user1Id, user2Id);
     }
 
 
-    //  סימון הודעות כנקראו
+    // Mark messages as read
     @Transactional
     public void markPrivateMessagesAsRead(Long missionId, Long senderId, Long recipientId) {
         chatMessageRepository.markPrivateMessagesAsRead(missionId, senderId, recipientId);
     }
 
-     //  ספירת הודעות שלא נקראו
+     // Count unread messages
     public long getUnreadPrivateMessagesCount(Long missionId, Long senderId, Long recipientId) {
         return chatMessageRepository.countUnreadPrivateMessages(missionId, senderId, recipientId);
     }
 
-     //  שליפת ההודעה האחרונה במשימה
+     // Fetch the last message in the mission
     public ChatMessage getLastMessageByMission(Long missionId) {
         return chatMessageRepository.findFirstByMissionIdOrderByTimestampDesc(missionId);
     }

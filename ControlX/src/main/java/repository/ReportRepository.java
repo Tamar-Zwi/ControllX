@@ -7,6 +7,6 @@ import java.util.List;
 
 @Repository
 public interface ReportRepository extends JpaRepository<Report, Long> {
-    // מאפשר למצוא את כל הדיווחים של משימה ספציפית
+    // Allows finding all reports for a specific mission
     List<Report> findByMissionId(Long missionId);
 }

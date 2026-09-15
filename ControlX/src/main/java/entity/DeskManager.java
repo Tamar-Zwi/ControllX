@@ -11,5 +11,5 @@ import lombok.EqualsAndHashCode;
 
 public class DeskManager extends AgencyEmployee {
 
-    private int yearsOfExperience;//ותק
+    private int yearsOfExperience; // Seniority
 }

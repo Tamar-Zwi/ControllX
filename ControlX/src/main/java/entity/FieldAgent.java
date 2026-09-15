@@ -10,26 +10,26 @@ import lombok.EqualsAndHashCode;
 public class FieldAgent extends AgencyEmployee {
 
     public enum AgentStatus {
-        AVAILABLE,    //זמין
-        ON_MISSION,   //במשימה
-        INJURED,      //נפגע
-        ON_LEAVE      //סיים
+        AVAILABLE,    // Available
+        ON_MISSION,   // On a mission
+        INJURED,      // Injured
+        ON_LEAVE      // Finished
     }
 
     public enum Specialty {
-        COMBAT,        // לחימה
-        INFILTRATION,  // חדירה
-        SABOTAGE,      // חבלה
-        CYBER,         // סייבר כללי
-        SURVEILLANCE,  // מעקב
-        INTERROGATION, // חקירה
-        UNDERCOVER,    // פעילות סמויה
-        HACKING,       // פריצה
-        ENCRYPTION,    // הצפנה
-        SIGNALS,       // מודיעין אותות
-        WEAPONRY,      // נשק וחימוש
-        TRANSPORT,     // תעבורה ושינוע
-        MEDICAL        // רפואה
+        COMBAT,        // Combat
+        INFILTRATION,  // Infiltration
+        SABOTAGE,      // Sabotage
+        CYBER,         // General cyber
+        SURVEILLANCE,  // Surveillance
+        INTERROGATION, // Interrogation
+        UNDERCOVER,    // Undercover activity
+        HACKING,       // Hacking
+        ENCRYPTION,    // Encryption
+        SIGNALS,       // Signals intelligence
+        WEAPONRY,      // Weaponry and armament
+        TRANSPORT,     // Transport and logistics
+        MEDICAL        // Medical
     }
 
     private String codename;
