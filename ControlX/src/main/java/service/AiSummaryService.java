@@ -11,9 +11,9 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-public class GeminiService {
+public class AiSummaryService {
 
-    @Value("${gemini.api.key}")
+    @Value("${huggingface.api.key}")
     private String apiKey;
     private final String URL = "https://router.huggingface.co/v1/chat/completions";
 
